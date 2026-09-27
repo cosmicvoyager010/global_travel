@@ -1,6 +1,31 @@
 <!doctype html>
 <!--
 ==================================================
+FINALIZED — Concierge "Send" duplicated the typed question (2026-09-26).
+Reported: typing into Concierge and pressing Send looked broken. It wasn't silent —
+it answered — but for any help-style question ("help", "how does this app work?",
+"what can I do here?") it echoed the message TWICE, and the second echo was a hardcoded
+literal string ("How does this app work?") rather than what was actually typed, so typing
+"help" showed "help" followed by a mismatched second bubble. Root cause: askConcierge()
+already echoes the typed text via add('u',...) near its top, then — for help-style text —
+calls helpTopics(), which unconditionally added its OWN hardcoded echo. That second add()
+was only correct on helpTopics()'s other call path (forced==='help', from the "How does
+this app work?" suggested-question chip), which never goes through the earlier echo line
+at all, so it needed its own. Fixed by giving helpTopics(skipEcho) a flag: the typed-text
+path now passes true and skips the duplicate; the chip path is unchanged.
+Verified with a real headless-browser render (Playwright), tracing actual event-listener
+execution (not just reading the code) since #cgForm carries two separate submit listeners
+(the panel's own, and a later specialist-handoff-routing one) — confirmed only the panel's
+own listener calls ask(), the second listener is a true no-op for non-redirect text, and
+the duplicate lived entirely inside helpTopics() as described above. Re-tested: typing
+"help" now shows one correct echo + one answer; an ordinary question (unaffected path)
+still works; the suggested-question chip that intentionally relies on helpTopics()'s
+default echo still shows exactly one bubble too. All 24 real <script> blocks node --check
+clean; div tags balanced (711/711).
+==================================================
+-->
+<!--
+==================================================
 STANDING PRINCIPLE — polish is not optional, on any branch (added 2026-09-24).
 This app is meant to be an award-winning, cross-platform build (iPhone,
 Windows, any phone/tablet, laptop, desktop — via the browser, not native
@@ -117,6 +142,32 @@ IF A FUTURE SESSION RECEIVES ANOTHER VERSION OR CONVERSION OF THIS APP
   tag-name counts against the pre-edit file, after any merge — every
   change in this file's history so far was verified that way, and nothing
   less should be trusted for a merge touching this much surface area.
+==================================================
+-->
+<!--
+==================================================
+FINALIZED — Companion FAB/panel colour fixed to a real accent; a merged-style-tag bug
+fixed along the way (2026-09-25).
+Concierge (#cgFab) and Companion (#cgFab2) rendered as the exact literal same gold —
+body #cgFab2{background:var(--gold-deep)} elsewhere only applies filter:brightness(.82)
+to Concierge's own colour, so Companion read as "a dimmer concierge" rather than its own
+persona, especially next to Atelier Guide (#cgFab3) which already had its own clearly
+distinct terracotta. Companion now uses the theme's own --accent2 (already used elsewhere
+in this app as its secondary accent, so it adapts across all colour themes) and gets the
+same pill/avatar/send-button/user-bubble treatment Atelier's .from-atelier rules already
+had — added as .from-companion equivalents, new "COMPANION" pill included. The embedded
+.companion-icon widget (and its .speaking glow animation) recoloured to match.
+Also fixed in passing: <style id="cgHelpCss"> was missing its own closing </style> before
+<style id="cgAttendantPolish"> opened, so the two blocks were accidentally merged into one
+(with an orphan extra </style> left dangling at the very end). Browsers tolerate this —
+raw-text parsing of <style> elements means the stray tag text just became inert content,
+and error-tolerant CSS parsing meant the real rules around it still applied — so nothing
+was visibly broken, but it's invalid markup and worth not leaving in place.
+Verified with a real headless-browser render (Playwright): all three FAB colours now
+distinct (gold / sage / terracotta), Companion panel ("Steady Host") shows the new sage
+avatar, "COMPANION" pill and user-message bubble correctly, no console errors in any state
+tested. All 24 real <script> blocks node --check clean; div tags balanced (711/711); style
+tags balanced (52/52, confirming the merged-tag fix didn't leave anything unclosed).
 ==================================================
 -->
 <!--
@@ -3756,14 +3807,6 @@ main{position:relative;z-index:1;padding:0 clamp(18px,4vw,54px) 60px}
 #companionTeaserStyles .persona-choice{min-height:52px;padding:8px 9px}
 .companion-presence .companion-icon{width:24px;height:24px;padding:7px;border-radius:12px}
 @media(max-width:620px){.companion-persona-grid{grid-template-columns:1fr}.persona-choice{min-height:54px}.ct-styles .persona-choice{min-height:52px}}
-.companion-nickname-row{margin:12px 0 6px}
-.companion-nickname-row label{display:block;font-size:var(--fs-13);font-weight:600;color:var(--ink);margin-bottom:5px}
-.companion-nickname-row label .opt{font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
-.companion-nickname-row input{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid rgba(var(--ink-rgb),.18);border-radius:12px;background:rgba(255,255,255,.55);color:var(--ink);font-size:var(--fs-13);font-family:inherit}
-.companion-nickname-row input:focus{outline:2px solid rgba(var(--gold-rgb),.5);outline-offset:1px;border-color:rgba(var(--gold-rgb),.5)}
-.companion-storage-note{font-size:var(--fs-12);color:var(--muted);margin:0 0 10px;opacity:.85;line-height:1.5}
-.companion-storage-note .link-btn{background:none;border:0;padding:0;margin:0;color:var(--gold-deep);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}
-.companion-storage-note .link-btn:hover{opacity:.8}
 .trust-badge{font-size:var(--fs-9);letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(var(--ink-rgb),.07);color:var(--muted)}
 .trust-badge.trust-muted{border:1px dashed rgba(var(--ink-rgb),.25);background:transparent}
 .discovery{margin:0 0 22px}
@@ -7344,7 +7387,7 @@ html body #cgPanel.from-atelier{left:calc(var(--gt-presence-edge) + var(--gt-pre
     <button type="button" id="fullBackupImportBtn">Restore backup</button>
     <input type="file" id="fullBackupImportFile" accept="application/json" hidden>
   </div>
-  <p class="ready-handoff" id="fullBackupNote">"Export trip" saves just this journey. "Back up everything" saves all your saved trips, journeys, Atelier picks, saved places, and your companion's character &amp; name to one file — worth doing before you clear your browser data or switch phones.</p>
+  <p class="ready-handoff" id="fullBackupNote">"Export trip" saves just this journey. "Back up everything" saves all your saved trips, journeys, Atelier picks, and saved places to one file — worth doing before you clear your browser data or switch phones.</p>
   <p class="ready-handoff">This page prepares the handoff; it does not book. Print or export it, then use your preferred airline, hotel, agent, or booking site. No payment is processed here.</p>
 </section>
 <div class="flow-next" data-flow="travel"><span>Trip coming up?</span><button type="button" data-primary-nav="travel">Switch to Traveling →</button></div>
@@ -7399,11 +7442,6 @@ html body #cgPanel.from-atelier{left:calc(var(--gt-presence-edge) + var(--gt-pre
         <button type="button" class="persona-choice" data-persona="professional" title="Clear, efficient and prepared"><span class="persona-choice-icon" data-symbol="professional"></span><span class="persona-choice-copy"><b>Practical Navigator</b><small>Clear · efficient · prepared</small></span></button>
       </div>
       <p style="font-size:var(--fs-13);color:var(--muted);margin:0 0 8px;opacity:.75">Choose a companion style: each has its own rhythm, attention and way of helping. These symbols are simply a visual cue — no human avatars. Safety and factual boundaries stay the same.</p>
-      <div class="companion-nickname-row" id="companionNicknameRow">
-        <label for="companionNickname">Name your companion <span class="opt">(optional)</span></label>
-        <input type="text" id="companionNickname" maxlength="24" placeholder="Defaults to the character name, e.g. Steady Host" autocomplete="off">
-      </div>
-      <p class="companion-storage-note">Your character and name are saved on this device only — no account, no server. Clearing your browser's data or switching devices removes them. <button type="button" class="link-btn" id="companionBackupLink">Back them up</button> so nothing is lost.</p>
     </div>
   </div>
   <div class="companion-body">
@@ -8175,7 +8213,7 @@ document.getElementById('dataSaverCheckHome')?.addEventListener('change',e=>{try
   a.download='global-travel-trip-package.json';a.click();URL.revokeObjectURL(a.href);
   toast('Trip exported');
  });
- const FULL_BACKUP_KEYS=['gt-trips','gt-booking','gt-ready-state','globalTravelSavedDesigns','gt-curated-places','gt-view-mode','gt-data-saver','gt-day-notes','gt-home-tz','gt-away-override','gt-companion-persona','gt-companion-nickname','gt-companion-enabled'];
+ const FULL_BACKUP_KEYS=['gt-trips','gt-booking','gt-ready-state','globalTravelSavedDesigns','gt-curated-places','gt-view-mode','gt-data-saver','gt-day-notes','gt-home-tz','gt-away-override'];
  document.getElementById('fullBackupExport')?.addEventListener('click',()=>{
   const data={};
   FULL_BACKUP_KEYS.forEach(k=>{try{const raw=localStorage.getItem(k);if(raw!==null){try{data[k]=JSON.parse(raw)}catch(e2){data[k]=raw}}}catch(e){}});
@@ -8194,7 +8232,7 @@ document.getElementById('dataSaverCheckHome')?.addEventListener('change',e=>{try
     const parsed=JSON.parse(reader.result);
     const data=parsed&&parsed.data&&parsed.format==='Global Travel Full Backup'?parsed.data:null;
     if(!data){toast('That file doesn\'t look like a Global Travel backup');return;}
-    if(!confirm('Restore this backup? It will replace your current saved trips, Atelier picks, saved places, and companion character/name on this device.')) return;
+    if(!confirm('Restore this backup? It will replace your current saved trips, Atelier picks, and saved places on this device.')) return;
     FULL_BACKUP_KEYS.forEach(k=>{ if(Object.prototype.hasOwnProperty.call(data,k)){ try{localStorage.setItem(k, typeof data[k]==='string'?data[k]:JSON.stringify(data[k]))}catch(err){} } });
     toast('Backup restored · reloading');
     setTimeout(()=>location.reload(),700);
@@ -8440,6 +8478,7 @@ html body #cgPanel{width:min(380px,calc(100vw - 24px))}
 .theme-switch.cg-pulse{outline:2px solid rgba(var(--gold-rgb,185,155,105),.9);outline-offset:4px;border-radius:999px;animation:cgPulse 1s ease-in-out 2}
 @keyframes cgPulse{50%{outline-offset:8px;outline-color:rgba(var(--gold-rgb,185,155,105),.3)}}
 @media(prefers-reduced-motion:reduce){.theme-switch.cg-pulse{animation:none}}
+</style>
 <style id="cgAttendantPolish">
 #cgPanel .cgp-t{letter-spacing:-.01em}
 #cgPanel .cgp-t small{color:#d6c19b;letter-spacing:.02em}
@@ -8458,7 +8497,25 @@ html body #cgPanel{width:min(380px,calc(100vw - 24px))}
 #conciergeSheet .cg-h{letter-spacing:-.01em}
 #conciergeSheet .cg-s{line-height:1.45}
 #cgLog .m.concierge-note{background:rgba(176,141,87,.12);border:1px solid rgba(176,141,87,.22);color:#e9e1d6}
-</style>
+
+/* [S-COMPANION-ICON-COLOR] Concierge and Companion rendered as the exact same gold
+   (body #cgFab2{background:var(--gold-deep)} elsewhere just applies filter:brightness(.82)
+   to Concierge's own colour) — easy to mistake Companion for "a dimmer concierge" rather
+   than a separate persona, especially now that Atelier already has its own clearly distinct
+   terracotta (see .from-atelier rules above). Companion now uses the theme's own --accent2
+   (already used elsewhere in the app as its secondary accent, so it adapts across all
+   colour themes) instead of a darkened copy of Concierge's gold, and gets the same
+   pill/avatar/send/user-bubble treatment already built for .from-atelier above. */
+body #cgFab2{background:var(--accent2,#8fa08f)!important;filter:none!important;box-shadow:0 0 0 4px rgba(var(--accent2-rgb,143,160,143),.32),0 10px 26px rgba(0,0,0,.28)!important}
+#cgPanel.from-companion .cgp-av{background:var(--accent2,#8fa08f)}
+#cgPanel.from-companion .cgp-h::after{content:"COMPANION";color:#c8e0c8;border-color:rgba(var(--accent2-rgb,143,160,143),.4)}
+#cgPanel.from-companion .cgp-calls a,#cgPanel.from-companion #cgSend{background:var(--accent2,#8fa08f)}
+#cgPanel.from-companion #cgLog .m.u{background:var(--accent2,#8fa08f)}
+#cgPanel.from-companion #cgLog .chips button:hover{background:rgba(var(--accent2-rgb,143,160,143),.30)}
+.companion-icon{color:var(--accent2,#8fa08f)!important;background:rgba(var(--accent2-rgb,143,160,143),.22)!important}
+.companion-icon.speaking{animation:cIcoGlowAccent 1.4s ease-in-out 2}
+@keyframes cIcoGlowAccent{0%,100%{box-shadow:0 0 0 0 rgba(var(--accent2-rgb,143,160,143),0)}50%{box-shadow:0 0 0 7px rgba(var(--accent2-rgb,143,160,143),.22)}}
+@media(prefers-reduced-motion:reduce){.companion-icon.speaking{animation:none;box-shadow:0 0 0 4px rgba(var(--accent2-rgb,143,160,143),.25)}}
 </style>
 <!-- [S-CONCIERGE-FAB] Floating concierge on every page: chat-style helper + Call / WhatsApp / Email.
      Set your real contact details in window.GT_CONCIERGE just below. Blank = that button stays hidden. -->
@@ -8536,23 +8593,6 @@ body:not(.travel-mode) #companion{display:none}
 #cgInput::placeholder{color:#8b979c}
 #cgSend{background:var(--gold-deep,#8a6a34);color:#fff;border:0;border-radius:999px;padding:0 15px;font-size:var(--fs-13);cursor:pointer}
 #cgPanel .cgp-n{font-size:var(--fs-10);color:#8b979c;padding:0 14px 10px}
-#cgPanel .cgp-av.cgp-av-tappable{cursor:pointer;position:relative;box-shadow:0 0 0 2px rgba(214,193,155,.45)}
-#cgPanel .cgp-av.cgp-av-tappable:hover{box-shadow:0 0 0 3px rgba(214,193,155,.7)}
-#cgPanel .cgp-change{display:none;align-items:center;gap:4px;margin-left:2px;flex:none;background:rgba(255,255,255,.09);border:1px solid rgba(214,193,155,.4);color:#f4efe9;border-radius:999px;padding:6px 10px;font:600 10px/1 system-ui,sans-serif;letter-spacing:.02em;cursor:pointer;white-space:nowrap}
-#cgPanel .cgp-change:hover{background:rgba(255,255,255,.17)}
-#cgPanel .cgp-change svg{width:10px;height:10px;transition:transform .15s}
-#cgPanel .cgp-change[aria-expanded="true"] svg{transform:rotate(180deg)}
-#cgPanel .cgp-change.cgp-nudge{animation:cgpChangeNudge 1.5s ease-in-out 3}
-@keyframes cgpChangeNudge{0%,100%{box-shadow:0 0 0 0 rgba(214,193,155,.55)}50%{box-shadow:0 0 0 6px rgba(214,193,155,0)}}
-@media(prefers-reduced-motion:reduce){#cgPanel .cgp-change.cgp-nudge{animation:none}}
-#cgPanel .cgp-x{flex:none}
-#cgpPersonaSwitch{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
-#cgpPersonaSwitch[hidden]{display:none}
-#cgpPersonaSwitch .cgp-persona-lbl{width:100%;font:600 9px/1 system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45);margin:2px 0 1px}
-.cgp-persona-opt{display:inline-flex;align-items:center;gap:6px;flex:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:#f4efe9;border-radius:999px;padding:6px 11px 6px 8px;font:500 11px/1.2 system-ui,sans-serif;cursor:pointer}
-.cgp-persona-opt:hover{background:rgba(255,255,255,.13);border-color:rgba(214,193,155,.4)}
-.cgp-persona-opt.active{background:rgba(176,141,87,.4);border-color:rgba(214,193,155,.6)}
-.cgp-persona-opt .cgp-persona-symbol{width:15px;height:15px;flex:none;stroke-width:1.7}
 
 /* ---------- Touch targets (Apple HIG: 44pt). Invisible hit-area only; visuals unchanged. Grows each control up to 44px, capped at +8px per side so neighbouring chips never overlap much. ---------- */
 @media (pointer:coarse){
@@ -8662,8 +8702,8 @@ body:not(.travel-mode) #companion{display:none}
   if(h.a&&h.a.length){var w=document.createElement('div');w.className='chips';
    h.a.forEach(function(a){var b=document.createElement('button');b.type='button';b.textContent=a[0];b.onclick=function(){closePanel();a[1]()};w.appendChild(b)});log.appendChild(w)}
   log.scrollTop=log.scrollHeight}
- function helpTopics(){
-  add('u','How does this app work?');
+ function helpTopics(skipEcho){
+  if(!skipEcho)add('u','How does this app work?');
   setTimeout(function(){add('c','Happy to explain. What would you like to know about?');
    chips([['Colour themes','theme'],['Saving places','save'],['Locking in a plan','lock'],['Travel mode','travelmode'],['Live mode','live'],['Data saver','datasaver'],['Concierge vs companion','who']],function(l,id){
     var h=HELP.filter(function(x){return x.id===id})[0];add('u',esc(l));setTimeout(function(){showHelp(h)},250)})},250)}
@@ -8722,7 +8762,7 @@ body:not(.travel-mode) #companion{display:none}
  function askConcierge(text,forced){
   if(forced==='help'){helpTopics();return}
   add('u',esc(text));
-  if(!forced&&/^\s*(help|how does (this|the) app work\??|what can i do here\??|how do i use this( app)?\??)\s*$/i.test(text)){helpTopics();return}
+  if(!forced&&/^\s*(help|how does (this|the) app work\??|what can i do here\??|how do i use this( app)?\??)\s*$/i.test(text)){helpTopics(true);return}
   if(!forced){var ni=navIntent(text);if(ni){setTimeout(function(){runNav(ni)},250);return}}
   if(!forced){
    var desk=privateTravelAdvice(text);
@@ -8843,6 +8883,19 @@ function atelierGuideAnswer(text){
   setTimeout(function(){ty.remove();renderAtelierReply(atelierGuideAnswer(text));},280);
  }
  function ask(text,forced){mode==='companion'?askCompanionUI(text):mode==='atelier'?askAtelierUI(text):askConcierge(text,forced)}
+ /* [S-CHIP-HANDOFF] A curated question chip can now hand off to another role directly,
+    instead of only being answered by its own role. This replaces routeTypedQuestion's
+    regex-guessing (which only ever ran on typed free text — see S-CHIPS-ONLY above; chips
+    call ask() directly and never passed through it, so the smart "this sounds like an
+    Atelier question" redirect was silently unreachable from any chip). A handoff chip
+    echoes its own label as the question, then hands off exactly as the old typed "talk to
+    the atelier guide" phrasing did — same gtHandoffTo(), same carried question, same
+    "Return to X ↺" — just reached by tapping a labeled chip instead of guessing at typed
+    phrasing. */
+ function chipHandoff(target,reason,question){
+  add('u',esc(question));
+  if(window.gtHandoffTo)window.gtHandoffTo(target,reason,question);
+ }
 
  function travelHint(){
   try{if(typeof companionContext==='function'&&typeof companionSentence==='function'){var c=companionContext(),w=null;
@@ -8931,7 +8984,13 @@ function atelierGuideAnswer(text){
   var w=document.createElement('div');w.className='gt-q-wrap';
   shown.forEach(function(pair){
    var b=document.createElement('button');b.type='button';b.className='gt-q-chip';b.textContent=pair[0];
-   b.onclick=function(){ask(pair[1]);};w.appendChild(b);
+   if(pair[2]&&pair[2].handoff){
+    b.classList.add('gt-q-chip-handoff');
+    b.onclick=function(){chipHandoff(pair[2].handoff,pair[2].reason||'Bringing this to the right specialist',pair[1]||pair[0])};
+   }else{
+    b.onclick=function(){ask(pair[1])};
+   }
+   w.appendChild(b);
   });
   if(all.length>6){
    var more=document.createElement('button');more.type='button';more.className='gt-q-more';more.textContent='More questions';
@@ -8949,16 +9008,6 @@ function atelierGuideAnswer(text){
   panel.querySelector('.cgp-t').firstChild.nodeValue=comp?(cpMeta?.label||'Your companion'):(atel?'Atelier Guide':(CFG.name||'Your concierge'));panel.setAttribute('aria-label',comp?'Your companion':(atel?'Atelier Guide':'Private travel desk'));
   panel.querySelector('.cgp-t small').textContent=comp?`● Local companion · ${cpMeta?.label||'Steady Host'} · character selected`:(atel?'● Your design eye':'● At your service');
   panel.querySelector('.cgp-calls')&&(panel.querySelector('.cgp-calls').style.display=(comp||atel)?'none':'');
-  closePersonaSwitch();
-  var av=panel.querySelector('#cgpAv'),chBtn=panel.querySelector('#cgpChangeBtn');
-  if(av)av.classList.toggle('cgp-av-tappable',!!comp);
-  if(chBtn){
-   chBtn.style.display=comp?'inline-flex':'none';
-   if(comp){
-    var seenChange=false;try{seenChange=localStorage.getItem('gt-companion-change-seen')==='1'}catch(e){}
-    chBtn.classList.toggle('cgp-nudge',!seenChange);
-   }else{chBtn.classList.remove('cgp-nudge');}
-  }
   input.placeholder=comp?'Ask about where you are…':(atel?'Ask about a style, room or feeling…':'Tell me what you need — route, stay, style or travel question…');
   var roleNote=panel.querySelector('.cgp-n');
   if(roleNote)roleNote.textContent=comp
@@ -9016,53 +9065,6 @@ function atelierGuideAnswer(text){
   fab2.classList.toggle('has-note',fresh);
   var lab=fresh?'Your companion has a note for you':'Open Companion conversation';fab2.title=lab;fab2.setAttribute('aria-label',lab);
  }
- function personaMeta(){return window.gtCompanionPersonaMeta||{}}
- function updateCompanionHeader(){
-  if(mode!=='companion')return;
-  var cpId=(typeof companionPersona==='function')?companionPersona():'classic';
-  var cpMeta=personaMeta()[cpId];
-  var label=(typeof companionDisplayLabel==='function')?companionDisplayLabel():((cpMeta&&cpMeta.label)||'Your companion');
-  var av=panel.querySelector('#cgpAv');if(av)av.innerHTML=window.gtCompanionSymbol?window.gtCompanionSymbol(cpId):LANTERN;
-  var t=panel.querySelector('.cgp-t');if(t&&t.firstChild)t.firstChild.nodeValue=label;
-  var s=panel.querySelector('.cgp-t small');if(s)s.textContent='\u25cf Local companion \u00b7 '+label+' \u00b7 character selected';
- }
- function renderPersonaSwitch(){
-  var tray=panel.querySelector('#cgpPersonaSwitch');if(!tray)return;
-  var meta=personaMeta(),cur=(typeof companionPersona==='function')?companionPersona():'classic';
-  tray.innerHTML='<span class="cgp-persona-lbl">Choose your companion character</span>';
-  Object.keys(meta).forEach(function(id){
-   var b=document.createElement('button');b.type='button';b.className='cgp-persona-opt'+(id===cur?' active':'');
-   b.setAttribute('role','radio');b.setAttribute('aria-checked',id===cur?'true':'false');
-   var ic=document.createElement('span');ic.className='cgp-persona-symbol';ic.innerHTML=window.gtCompanionSymbol?window.gtCompanionSymbol(id):'';
-   var lb=document.createElement('span');lb.textContent=(meta[id]&&meta[id].label)||id;
-   b.appendChild(ic);b.appendChild(lb);
-   b.addEventListener('click',function(e){
-    e.stopPropagation();
-    if(id!==cur&&typeof setCompanionPersona==='function'){
-     setCompanionPersona(id);
-     updateCompanionHeader();
-     if(typeof window.gtSyncCompanionPersonaUI==='function')window.gtSyncCompanionPersonaUI();
-     add('c hint',esc('Switched to '+((meta[id]&&meta[id].label)||id)+'.'));
-    }
-    try{localStorage.setItem('gt-companion-change-seen','1')}catch(ex){}
-    var chBtn=panel.querySelector('#cgpChangeBtn');if(chBtn)chBtn.classList.remove('cgp-nudge');
-    closePersonaSwitch();
-   });
-   tray.appendChild(b);
-  });
- }
- function openPersonaSwitch(){
-  renderPersonaSwitch();
-  var tray=panel.querySelector('#cgpPersonaSwitch');if(tray)tray.hidden=false;
-  var chBtn=panel.querySelector('#cgpChangeBtn');if(chBtn)chBtn.setAttribute('aria-expanded','true');
-  try{localStorage.setItem('gt-companion-change-seen','1')}catch(e){}
-  if(chBtn)chBtn.classList.remove('cgp-nudge');
- }
- function closePersonaSwitch(){
-  var tray=panel.querySelector('#cgpPersonaSwitch');if(tray)tray.hidden=true;
-  var chBtn=panel.querySelector('#cgpChangeBtn');if(chBtn)chBtn.setAttribute('aria-expanded','false');
- }
- function togglePersonaSwitch(){var tray=panel.querySelector('#cgpPersonaSwitch');if(!tray)return;tray.hidden?openPersonaSwitch():closePersonaSwitch()}
  function build(){
   fab=document.createElement('button');fab.id='cgFab';fab.type='button';fab.setAttribute('aria-label','Open Concierge conversation');fab.setAttribute('aria-haspopup','dialog');fab.setAttribute('aria-expanded','false');fab.title='Concierge';fab.innerHTML=BELL+'<span class="cg-dot"></span>';
   fab2=document.createElement('button');fab2.id='cgFab2';fab2.type='button';fab2.setAttribute('aria-label','Open Companion conversation');fab2.setAttribute('aria-haspopup','dialog');fab2.setAttribute('aria-expanded','false');fab2.title='Open Companion conversation';fab2.innerHTML=LANTERN+'<span class="cg-badge" aria-hidden="true">1</span>';
@@ -9072,8 +9074,7 @@ function atelierGuideAnswer(text){
   if(CFG.phone)calls+='<a href="tel:'+esc(CFG.phone.replace(/[^+\d]/g,''))+'">\ud83d\udcde Call</a>';
   if(CFG.whatsapp)calls+='<a href="https://wa.me/'+esc(CFG.whatsapp.replace(/\D/g,''))+'" target="_blank" rel="noopener">\ud83d\udcac WhatsApp</a>';
   if(CFG.email)calls+='<a href="mailto:'+esc(CFG.email)+'">\u2709 Email</a>';
-  panel.innerHTML='<div class="cgp-h"><div class="cgp-av" id="cgpAv">'+BELL+'</div><div class="cgp-t">'+esc(CFG.name||'Private travel desk')+'<small>\u25cf Discreetly at your service</small></div><button class="cgp-change" id="cgpChangeBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Change companion character">Change <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button><button class="cgp-x" type="button" aria-label="Close">\u00d7</button></div>'+
-   '<div class="cgp-persona-switch" id="cgpPersonaSwitch" role="radiogroup" aria-label="Choose your local companion character" hidden></div>'+
+  panel.innerHTML='<div class="cgp-h"><div class="cgp-av">'+BELL+'</div><div class="cgp-t">'+esc(CFG.name||'Private travel desk')+'<small>\u25cf Discreetly at your service</small></div><button class="cgp-x" type="button" aria-label="Close">\u00d7</button></div>'+
    (calls?'<div class="cgp-calls">'+calls+'</div>':'')+
    '<div id="cgLog"></div><div id="gtQuestionShelf" aria-label="Suggested questions"></div><form id="cgForm" autocomplete="off"><input id="cgInput" placeholder="" aria-label="Internal message"><button id="cgSend" type="submit">Send</button></form>'+
    '<div class="cgp-n">'+(calls?'Prefer a person? Use the buttons above. ':'')+'Ask in your own words. The app answers from its travel library and brings in the right specialist when needed.</div>';
@@ -9084,8 +9085,6 @@ function atelierGuideAnswer(text){
   fab2.addEventListener('click',function(e){e.stopPropagation();toggle('companion')});
   fab3.addEventListener('click',function(e){e.stopPropagation();toggle('atelier')});
   panel.querySelector('.cgp-x').onclick=closePanel;
-  panel.querySelector('#cgpChangeBtn').addEventListener('click',function(e){e.stopPropagation();if(mode==='companion')togglePersonaSwitch()});
-  panel.querySelector('#cgpAv').addEventListener('click',function(e){e.stopPropagation();if(mode==='companion')togglePersonaSwitch()});
   panel.addEventListener('click',function(e){e.stopPropagation()});
   panel.querySelector('#cgForm').addEventListener('submit',function(e){e.preventDefault();var v=input.value.trim();if(!v)return;input.value='';ask(v)});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closePanel()});
@@ -9105,11 +9104,10 @@ function atelierGuideAnswer(text){
   if(m==='companion')markSeen();
   panel.classList.add('open');fab.setAttribute('aria-expanded',m==='concierge'?'true':'false');fab2.setAttribute('aria-expanded',m==='companion'?'true':'false');fab3.setAttribute('aria-expanded',m==='atelier'?'true':'false');
   setTimeout(function(){input.focus()},50)}
- function closePanel(){panel.classList.remove('open');fab.setAttribute('aria-expanded','false');fab2.setAttribute('aria-expanded','false');fab3.setAttribute('aria-expanded','false');closePersonaSwitch();checkNote()}
+ function closePanel(){panel.classList.remove('open');fab.setAttribute('aria-expanded','false');fab2.setAttribute('aria-expanded','false');fab3.setAttribute('aria-expanded','false');checkNote()}
  window.openConcierge=function(){openPanel('concierge')};
  window.openAtelierGuide=function(){openPanel('atelier')};
  window.openCompanionPanel=function(){openPanel('companion')};
- window.gtUpdateCompanionPopupHeader=updateCompanionHeader;
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);else build();
  document.addEventListener('DOMContentLoaded',function(){var h=document.getElementById('conciergeCall');if(h)h.addEventListener('click',function(e){e.stopImmediatePropagation();e.stopPropagation();toggle('concierge')},true)});
 })();
@@ -12035,8 +12033,7 @@ const COMPANION_PERSONAS={
  playful:{label:'Light Wanderer',blurb:'Curious, lightly witty and open to detours. Makes small discoveries feel worth noticing.'},
  friendly:{label:'Warm Local',blurb:'Easygoing, human and practical. Helps you settle in quickly and feel at home.'},
  elegant:{label:'Refined Guide',blurb:'Composed and perceptive. Notices atmosphere, craft, timing and the small details that elevate a day.'},
- professional:{label:'Practical Navigator',blurb:'Clear, efficient and prepared. Reduces friction and gives you the next useful move.'},
- funny:{label:'Witty Sidekick',blurb:'Quick with a joke and a wink, but the real answer always lands right after — humor with common sense underneath.'}
+ professional:{label:'Practical Navigator',blurb:'Clear, efficient and prepared. Reduces friction and gives you the next useful move.'}
 };
 /* [S-COMPANION-SYMBOLS] Non-human companion emblems. Each persona gets a simple visual cue
    instead of a face/avatar, so the choice is easier to recognize at a glance on any screen. */
@@ -12056,9 +12053,6 @@ window.gtCompanionSymbol=companionSymbolSvg;
 window.gtCompanionPersonaMeta=COMPANION_PERSONAS;
 function companionPersona(){const p=companionPref('gt-companion-persona','classic');return COMPANION_PERSONAS[p]?p:'classic';}
 function setCompanionPersona(id){if(COMPANION_PERSONAS[id])companionSet('gt-companion-persona',id);}
-function companionNickname(){const n=companionPref('gt-companion-nickname','');return (n||'').trim().slice(0,24);}
-function setCompanionNickname(name){companionSet('gt-companion-nickname',(name||'').trim().slice(0,24));}
-function companionDisplayLabel(){return companionNickname()||(COMPANION_PERSONAS[companionPersona()]?.label)||'Your companion';}
 const COMPANION_VOICE={
  classic:{note:'Warm, measured and observant — a steady presence without filling the silence.',prefix:['One thought:','My read:','A simple way to handle it:']},
  calm:{note:'Soft, sparse and reflective — leaves room to breathe and notice.',prefix:['Take this gently:','No need to rush this:','For now:']},
@@ -12951,18 +12945,15 @@ document.addEventListener('DOMContentLoaded',()=>{
   const c=COMPANION_SYMBOLS[id]||COMPANION_SYMBOLS.classic;
   document.querySelectorAll('#companionPresence .companion-icon,#companionAnswer .companion-icon').forEach(svg=>{svg.innerHTML=c.path;svg.setAttribute('aria-label',c.title);});
   const fab=document.getElementById('cgFab2');
-  if(fab){const badge=fab.querySelector('.cg-badge');fab.innerHTML=window.gtCompanionSymbol?window.gtCompanionSymbol(id,'companion-fab-symbol'):(c.path);if(badge)fab.appendChild(badge);const lbl=companionDisplayLabel();fab.title=lbl;fab.setAttribute('aria-label',lbl);}
+  if(fab){const badge=fab.querySelector('.cg-badge');fab.innerHTML=window.gtCompanionSymbol?window.gtCompanionSymbol(id,'companion-fab-symbol'):(c.path);if(badge)fab.appendChild(badge);fab.title=COMPANION_PERSONAS[id]?.label||'Your local companion';fab.setAttribute('aria-label',(COMPANION_PERSONAS[id]?.label||'Your local companion'));}
  }
  function syncPersonaPicker(){
   const cur=companionPersona(),meta=COMPANION_PERSONAS[cur]||COMPANION_PERSONAS.classic;
   personaButtons.forEach(b=>{b.classList.toggle('active',b.dataset.persona===cur);b.setAttribute('aria-checked',b.dataset.persona===cur?'true':'false')});
   teaserButtons.forEach(b=>{b.classList.toggle('active',b.dataset.tpersona===cur);b.setAttribute('aria-checked',b.dataset.tpersona===cur?'true':'false')});
   const n=document.getElementById('companionPersonaNote');const v=window.COMPANION_VOICE?.[cur];if(n&&v)n.textContent=v.note;
-  const pk=document.getElementById('companionPresenceKicker');if(pk)pk.textContent=`${companionDisplayLabel()} · your companion`;
-  const nickInput=document.getElementById('companionNickname');if(nickInput&&document.activeElement!==nickInput)nickInput.value=companionNickname();
-  const nickPh=document.getElementById('companionNickname');if(nickPh)nickPh.placeholder=`Defaults to the character name, e.g. ${meta.label}`;
+  const pk=document.getElementById('companionPresenceKicker');if(pk)pk.textContent=`${meta.label} · your companion`;
   syncPersonaSymbols();syncCompanionIconSurface();
-  if(typeof window.gtUpdateCompanionPopupHeader==='function')window.gtUpdateCompanionPopupHeader();
  }
  personaButtons.forEach(btn=>btn.addEventListener('click',()=>{
   setCompanionPersona(btn.dataset.persona);
@@ -12975,19 +12966,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   updateCompanionPresence();
  }));
  syncPersonaPicker();
- window.gtSyncCompanionPersonaUI=function(){syncPersonaPicker();updateCompanionPresence();};
- const nicknameInput=document.getElementById('companionNickname');
- if(nicknameInput){
-  nicknameInput.value=companionNickname();
-  nicknameInput.addEventListener('input',()=>{
-   setCompanionNickname(nicknameInput.value);
-   syncPersonaPicker();
-   updateCompanionPresence();
-  });
- }
- document.getElementById('companionBackupLink')?.addEventListener('click',()=>{
-  if(typeof cScrollTo==='function')cScrollTo('readyPanel','fullBackupExport');
- });
  document.querySelectorAll('#companionChips .chip').forEach(chip=>chip.addEventListener('click',()=>{
   document.querySelectorAll('#companionChips .chip').forEach(c=>c.classList.remove('active'));
   chip.classList.add('active');
@@ -16548,10 +16526,15 @@ function renderDestinationStory(key){
 
 
 <style id="gtAssistantTextConversationCss">
-/* Compact assistant panel = text-to-text conversation. No voice/microphone affordance. */
-#cgPanel #cgForm{display:flex!important}
-#cgPanel #cgInput{display:block!important}
-#cgPanel #cgSend{display:inline-flex!important}
+/* [S-CHIPS-ONLY] All three roles are chip/question-driven now, not free-text conversation
+   (see S-CHIPS-ONLY note above questionSets()) — this app answers by matching a known
+   question, it isn't a model, so a free-text box that silently falls through to app-search
+   on anything unmatched reads as broken. #cgForm (input+Send) stays hidden in every mode;
+   this block used to force it visible and is kept only so its selectors still exist to
+   override, rather than deleting a block another patch may still reference. */
+#cgPanel #cgForm{display:none!important}
+#cgPanel #cgInput{display:none!important}
+#cgPanel #cgSend{display:none!important}
 #cgPanel .cgp-n{line-height:1.35}
 </style>
 <script id="gtAssistantTextConversationJs">
@@ -16566,9 +16549,9 @@ function renderDestinationStory(key){
   function sync(){
     var p=document.getElementById('cgPanel'),f=document.getElementById('cgForm'),i=document.getElementById('cgInput'),b=document.getElementById('cgSend');
     if(!p||!f||!i||!b)return;
-    f.style.display='flex';
-    i.style.display='block';
-    b.style.display='inline-flex';
+    f.style.display='none';
+    i.style.display='none';
+    b.style.display='none';
     var r=role();
     var ph=r==='companion'?'Ask Companion…':r==='atelier'?'Ask Atelier Guide…':'Ask Concierge…';
     i.placeholder=ph;
