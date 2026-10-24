@@ -1,0 +1,232 @@
+Developer notes removed from index.html (kept for resuming work: upload the CORE file newcore-FINAL-2026-10-16_v19_merged-panorama-tips-reset.html, not this)
+
+==================================================
+DEV NOTE  (READ THIS FIRST. This is the newest note in the file; older notes further down are history.)
+FILE: newcore-FINAL-2026-10-16_v19_merged-panorama-tips-reset.html        LAST UPDATED: 2026-10-16
+CANONICAL: this is the ONE core file. Do not create v2 / v3 / final_final copies unless the owner asks to branch.
+LINEAGE: newcore-FINAL-2026-10-01_1033 + bug fixes from GLOBAL-TRAVEL-FINAL__2_ + the role and conversation work below
+         + 2026-10-03: trip-card menu (from __6_), first-visit home (from __7_), team icons, Home team badge, feature owners,
+         hero copy, and the TEXT-REFINE-PACK from the 2026-10-02 zip core applied LAST.
+ 2026-10-11: READING-LAYER TEXT PASS (copy only, no logic changes). About 60 long paragraphs shortened; the key phrase is bold (span.k),
+         tiny gold line icons from one inline SVG sprite (#gt-i-star/pin/check/offline/compass, no new images), first sentence of long Tips
+         answers bolded by a small script (#gt-leadin), CSS in <style id="gt-type">. Amalfi-first wording removed from the hero note, Curated
+         Places footer, Amalfi card and menu sub-label. Two dev-facing strings shown to users replaced ("Photos coming soon." / "Real stays ... coming soon.").
+         Left as is on purpose: sim-banner paragraph and Explore/Traveling hint (rewritten at runtime by REWRITES, which match the original wording).
+         Tested: headless Chrome at phone width, no page errors, gtRoleFeatureCheck() empty, all inline scripts pass node --check.
+ 2026-10-11 (2): KYOTO-TO-EUROPE FLOW (from a test scenario). Guided start now has "Places I've been" (tap chips -> Been marks, same store as the map),
+         "Starting from..." (sets Home base), and By season asks Europe / Anywhere first (Europe = destinationMeta zone "Europe/..").
+         Been places move to the end of season lists with "been"; the Home base city is left out of suggestions. "Departing from" follows Home base
+         until typed by hand. The example "Paris" no longer shows as "Your brief" until chosen (flag window.__gtToTouched; script #gt-flow).
+         Home base note reworded. London has no climate data, so it is never listed (marks still work). Pending: Ideas-by-feeling path not tested.
+ 2026-10-11 (3): QUICK PLAN card at the top of the planner form (#gtQuickPlan, script #gt-quickplan). One question at a time, tap-only, auto-advance:
+         From (only if no Home base) > Where > Days > Feel > When > Arrange. Pills show choices and jump back; Back / Skip / Start over; final
+         "See my itinerary" scrolls and pulses #itineraryCard. It only sets the existing fields (tripFrom/tripTo/tripDays/tripStyle/tripStart/
+         tripArrangement) and fires input+change, so the live itinerary and every old control still work. Place picks skip "Been" and Home base.
+ 2026-10-11 (4): THEME + PHONE CHECK. Quick plan colours now follow the form text colour (color-mix with fallbacks), icons in dark info boxes use currentColor.
+         Visually checked rose, pearl, noir, sand-denim, harbor-lights, plum-noir; computed audit run on all 15 (it misreads color-mix values, so visuals decide).
+         Phone widths 360/390/430: no sideways scroll, all card buttons >= 32px, date field fits. Not checked: real device keyboard, sections hidden on first visit
+         in every theme.
+ 2026-10-12: CONCIERGE "NOT HELPFUL" FIX (from a screen recording at 1342x610). Cause: the answer is drawn under the chips, below the visible area, so taps looked dead;
+         the floating "I'm not sure where to start" only jumped to the Plan page. Now: script #gt-concierge-fix scrolls each answer into view above the bottom bar
+         (html scroll-padding-bottom), flashes it briefly, drops a repeated paragraph (two engines answered: "Can I book the flight first?", "How should I pace...?"),
+         and that floating starter lands on the guided "Where are you with it?" answer. Not reproduced: the repeated "Lovely - I'll take you to the planner [Go]" reply.
+ 2026-10-12 (2): CONCIERGE REBUILT (script #gt-concierge-brain). gtBrain(text,surface) answers what the old RULES missed (train or car, season/weather from
+         TRAVEL_CLIMATE_RANGES, cost, stays, prep, itinerary, saving, discovery) with short answers + buttons that navigate/pulse/prefill; design questions hand off
+         to Atelier Guide and on-trip ones to Companion WITH the question (gtHandoffTo). Used by the floating panel (askConcierge patched) and the page card
+         (gtAssistantAnswer wrapped). The old fallback "search the app / use Call above" is replaced by a clarifying set of actions. "Ready to assist"
+         (.attendant-status) is now a live "Next: ..." button driven by window.gtQuickPlanNext(). The handoff bar (.gt-hbar) is placed under the question shelf.
+         Prices and availability are never invented. Guided starters (SKIP regex) still use the older flow.
+ 2026-10-12 (3): RE-APPLIED on top of the 2026-10-12 (2) Concierge rebuild (gtBrain). Earlier comparison was with the separate "v29.x" build (which had no floating team icons, roles, Quick Plan
+         or guided start, and an older map). Brought over only what this file lacked: (a) hand-written 4-beat "Feel the stay" walkthrough for all
+         8 Coastal Deco rooms and all 10 Atelier ideas (stay:[...] field; openVirtualStay/openAtelierStay; shared modal, falls back to a generated
+         sequence if an idea has no stay:), each frame ends with "An imagined room - a look, not a listing"; (b) map toggle relabelled Explore
+         World / My Journey (same data-map-filter values), kicker changes with it, and a Cards on/off switch that hides #mapCard (script
+         #gt-v29x-map-js). The old build's own map card was NOT ported: this file's #mapCard / selectMapPin already does that job.
+         Not ported (already here in some form): styleGeography honesty layer, reading-layer text pass, 12px text floor.
+         (c2) offlineTripHeuristics (5 rule-based pacing notes, zero API) ported into cPlanToday as one extra line.
+ 2026-10-13 (CONCIERGE FOCUS + ADVISOR): Concierge is smarter and shows one thing at a time. New last script #gt-concierge-focus (+ style #gt-concierge-focus-css): understands feel / season / region / the place in the question, suggests ONE place with "Another idea", answers "how many days" for the place asked, remembers "there"; after a question only that turn is on screen (old chat folds into "Earlier", question shelf into "Ask something else", answers show 2 sentences + "More", one main button + "More options"). Concierge only. Then script #gt-concierge-advisor adds client types, journey stages, returning-client memory (device only, key gt-advisor-memory-v1) and the booking ladder. To undo, delete those blocks.
+ 2026-10-13 (REVERSED): the tab keeps its name EXPLORE. "Discover" is a SEPARATE feature (header star button, Home "Discover" button, "Discover everything" sheet, menu "All features"). The rename below was a mistake and has been undone for every tab label, toast, hint, aria-label and assistant label.
+ 2026-10-13: THE TAB \"EXPLORE\" IS NOW \"DISCOVER\" (owner request). Visible names only: Home button (\"Discover first →\"), bottom bar, menu item, Discover/Traveling mode switch, hint text and its rewrites (#gtTextRefineJs), toasts (\"Switched to Discover…\"), search note, Past \"Discover again →\", Concierge labels, aria-labels. UNCHANGED on purpose: ids and data attributes (data-primary-nav=\"explore\", showPage('explore'), #nearbyExplore ...) and verbs (\"Explore this style →\", \"Explore on your own\", map mode \"Explore World\"). Any new code that looks for the tab by its TEXT must now look for \"Discover\"; use data-primary-nav instead.
+ 2026-10-12 (5): IMAGE AUDIT (all tabs + every Explore section, 19 views, phone width). Broken images: only the 2 Atelier rooms with img:'' (Blue Hour Loft, Soft Minimal): they now have original vector illustrations (imagined rooms; replace with photos any time by setting img). Real places (8, img:'' by the owner's no-stock-photo policy): empty state changed from the developer note \"Add your own photo here\" to a link \"See photos on the official site\" (uses each place's url); setting img:'...' still shows the owner's photo. Photos of real properties must come from the owner (own or licensed); none were invented. Still no photos: Andalucia/Morocco stories, per earlier notes.
+ 2026-10-12 (4): CONCIERGE HANDLES REAL SITUATIONS. Battery of 40 traveller questions: 16 got no answer, several got a generic one. New script #gt-concierge-needs wraps gtBrain (original brain untouched except dest() now honours window.__gtAskPlace and a window.gtBrainKit export): 24 situation answers (kids, solo, group, celebration, access, dietary, pets, rest, first-timer, short trip, book-now-or-flexible, money, phone, tipping, airport, language, seasick, scams, entry rules, insurance, water, cancelled flight, can-you-book-it, history+food, how many days) + place/month awareness ("August in Seville" uses TRAVEL_CLIMATE_RANGES). No prices, schedules or legal rules invented; rules that change say so. Tap-only UI: floating Concierge gets two new tabs (For me, Needs) and extra chips under Stay, Move, Help, each with a short phrase in SHORT; the page Concierge list gets the same 12 questions. Fixed two older rules (V6 SHORT + gtActionAnswersJs) that answered ANY text containing \"flight\" with the book-the-flight-first line. Result: 46/50 test questions answered, 0 page errors. Not tested: real phone, every theme, Know more landing text (see PENDING).
+         Polish pass after a 3-width phone audit (no errors, no sideways scroll, no broken images): aligned the Coastal "Feel the stay" button,
+         raised the Cards on/off toggle to a comfortable tap height, shortened the map kicker.
+         Not tested: other colour themes. Pending: long strings generated inside the conversation answers were not touched.
+
+ 2026-10-13 (party): WHO IS TRAVELLING. Default is SOLO. New field #tripParty ("Travelling as": Solo / Two of us / Family with children / Friends or a group / Join a group tour) in the plan form, saved on the trip as trip.party and in localStorage 'gt-party'; one honest guidance line per choice (#gtPartyLine, script #gt-party); solo/group/tour offer a shortcut into the existing journey-builder group experiences (Small group / Join a group formats already existed, nothing duplicated). window.gtParty(), gtSetParty(id) are the API. Concierge answers for solo, group and kids got a "Plan this trip as ..." action. No "honeymoon" content exists in this file (searched, incl. spellings). UPDATE: the choice is now shown on the booked ticket (#ticketParty, \"Travelling as\"), saved on bookings (saveBooking is wrapped to add party) and on locked trips, shown on My trips cards when chosen (older trips show nothing; the ticket shows Solo, the default, for older bookings), and changing the choice while the matching trip is open updates booking, trip and ticket. UPDATE 2: day-by-day rows now carry one short generic pacing line for the chosen party (gtPartyDayNote; no venues/hours/prices invented), and the advisor memory is set from the selector (window.gtAdvisorSetWho(who,onlyIfExists); written on an explicit choice, never on load, never recreating a forgotten memory). Reopening a trip or booking restores its party (gtRestoreParty). The itinerary LIBRARY content itself is untouched.
+
+ 2026-10-14 (readability): PRIVATE JOURNEY CARD. The card's 8/9/11px sizes were all raised to the 12px floor by #gtTextRefineJs, so label/value/description looked identical. New scoped style #gt-brief-readable (selectors start with #itineraryCard): label 12px bold, value 17px serif (wraps instead of \"…\"), description 14px in darker ink, single column under 560px. Seven long Theme/Rhythm/On-the-ground descriptions shortened (meaning unchanged). Note: the older \"On the ground\" options (journeyCharacterPatch COMPANY: solo / local groups / private guide / tour leader / mix) overlap in part with the newer #tripParty \"Travelling as\"; they answer different questions (how you experience places vs who is travelling) and are NOT linked yet.
+ 2026-10-14 (tips): TIPS ARE NOW COMPACT, RANKED AND GROUPED. Every tip in tipCategories gets p ('must' | 'useful') and g (group key); 'must' tips also get k (a one-line takeaway); each category gets groups:[{key,label}]. q and a are unchanged, so search, cTip() and the Concierge matcher keep working. New renderer tipsMarkup() feeds both #tipsList (Flight planning) and the Quick tips panel: a gold "Must remember" box first (title + takeaway visible, full answer on tap), then "Useful" in collapsed groups (flat list when 3 or fewer). One tip open at a time. Lightbulb tips inside sections show a "Must remember" badge when p is 'must'. CSS in <style id="gt-tips-v2"> (own gt-tp-* classes, tokens only, dark themes via --tp-accent). To re-rank a tip change its p; to move it change its g.
+ 2026-10-14 (integration v16): MERGE OF v13 + v15 + PHOTOS FROM THE OLDER v12 FILE. v15 already contained everything in v13 (tips v2 + assistant contrast were the only differences), so v15 is the base. Six photographs that existed only in the older Global-Travel-Elegant-Integrated v12 were embedded in the image store (EXT/DATA, full + small data-saver copies): real-place photos for Ashford Castle, Castell Son Claret, Explora Torres del Paine, Amanwana and Luxury Camp at Union Lido (realPlaces img now __gtImg), and the Ravello thumbnail in the Amalfi "A little farther" list (nearbyTowns[].url, class nt-photo). NOT restored on purpose: the 3 Unsplash-hosted pictures (Blue Hour Loft, Soft Minimal, Palazzo Parisio) because the earlier "Unsplash removal" decision stands, and the old Positano hero (the new hero is the same scene, wider crop). All other old photos were already in the new file under new ids.
+
+ 2026-10-14 (contrast): ASSISTANT PANELS. #cgPanel is always dark but several parts used the light-theme ink/muted colours (.gt-trust-note, .gt-voice-note, .gt-role-signature, #cgLog .m.discovery; about 1:1 contrast). New style #gt-cg-contrast re-scopes --ink/--ink-rgb/--muted inside #cgPanel to light values, fixes the notes' white background and gives #cgLog a dark scrollbar.
+
+2026-10-16 (MERGE v19): TWO LINES OF WORK JOINED. BASE = newcore-FINAL-2026-10-14_v16_integrated_panorama (panorama viewer, six real photos, assistant-panel
+         contrast fix, TIPS v2). ADDED from the 2026-10-15/16 line (v18): Reset this app, readable cards, two tip fixes adapted to tips v2. Method: their file
+         was the base because it was a superset of v13 plus ~750 lines; v13 was the common ancestor; everything from v18 that did not overlap was re-applied
+         by script with every anchor asserted, NOT by a blind textual merge (the two tips versions would have collided).
+         DECISIONS. (1) TIPS: kept tips v2 (a "Must remember" box whose rows show title + one-line takeaway without opening, then collapsed "Useful" groups;
+         better for people who skim). The v18 Key/All switch version was DROPPED: its #gt-tips-compact, #gt-tips-inline and tipsHTML helpers are NOT in this
+         file. (2) The Amalfi lightbulb tip was attached to #destinationAmalfi, which no longer exists, so it never showed. Now #destinationStoryRoot with an
+         /Amalfi/ guard (inlineTipMap third item). (3) Inline "More tips" now lands ON that tip: openTipsPanel(cat, tipIndex), rows carry data-i, a collapsed
+         Useful group is opened, the row opened and scrolled into view; the button names its category. (4) RESET THIS APP: menu "Your data", #gtResetApp,
+         script #gt-reset, style #gt-reset-css (clears keys ^gt[-_] or ^globalTravel in localStorage and sessionStorage, keeps gt-theme, never clears the
+         service-worker cache, safe on a shared host). Any NEW storage key must start with gt- to be covered. (5) #gt-cards-readable: Companion "Your journey
+         style" box on its own full-width row; route block contrast 4.0 to 8.7 (planner CSS loads late, so those rules use ids with !important); three transport
+         dropdown labels shortened to fit ("Smart route - best fit", "Flight - real airport gateway", "Mixed - flight + ground").
+         TESTED in headless Chrome at phone width: no page errors; gtRoleFeatureCheck() empty; all 7 inline tips land on the right tip; Amalfi tip shows;
+         5 of 8 real places show photos; panorama opens (1774x887); party, day line and ticket field work; Reset keeps theme and another site's key; script
+         syntax identical to the file as received (the 7 known non-JS blocks fail node --check exactly as before). NOT TESTED: real iPhone/Android (panorama
+         drag by touch especially), the other colour themes, Data Saver on, installed home-screen mode.
+
+WHAT CHANGED SINCE 2026-10-13 (short list; details in the dated entries above)
+ 1. WHO IS TRAVELLING (default Solo): #tripParty in the plan form; saved on trip, booking and draft; restored when reopened; shown on the booked ticket
+    (#ticketParty) and My trips cards; one generic pacing line per day (gtPartyDayNote); sets the Concierge memory (gtAdvisorSetWho, only on an explicit choice).
+ 2. PRIVATE JOURNEY CARD readable (#gt-brief-readable): label 12 / value 17 / description 14, single column under 560px, seven descriptions shortened.
+ 3. TIPS v2 (from the other file): Must remember box + collapsed Useful groups; plus the Amalfi tip fix and "More tips" landing on the tip (see MERGE v19).
+ 4. PANORAMA VIEWER (from the other file): "Explore the villa in panorama" under the Atelier rooms; modal #gtPanoramaModal, scripts #gt-panorama-viewer-js,
+    style #gt-panorama-viewer-css; one panorama (Riviera Salon, 1774x887, embedded).
+ 5. PHOTOS (from the other file's older v12): real photos for Ashford Castle, Castell Son Claret, Explora Torres del Paine, Amanwana, Luxury Camp at Union
+    Lido, and the Ravello thumbnail. The 3 Unsplash-hosted ones were NOT restored (the Unsplash removal decision stands).
+ 6. ASSISTANT PANELS contrast (from the other file, #gt-cg-contrast): #cgPanel is always dark; notes there were about 1:1.
+ 7. CARDS readable (#gt-cards-readable) and RESET THIS APP (#gt-reset): see MERGE v19.
+ 8. CHECKED, NOTHING TO DO: no "honeymoon" content exists. The tab keeps its name EXPLORE.
+
+HOW TO RESUME (new chat or new Claude account): paste or upload this file and say "continue from DEV NOTE".
+ First reply = 3 to 5 lines: what is DONE, what is PENDING, what you will do this turn. Then wait for the owner's OK.
+WORKING RULES
+ - Deliver the full file as a download (about 7 MB; never paste it into chat). Keep one canonical file.
+ - Update this DEV NOTE on every change: date, what changed, what is pending, new bugs.
+ - On every upload, compare it to earlier uploads by hash and say plainly if it is a duplicate.
+ - Merging files: feature comparison table first, owner confirms, then merge. Never guess which file is better.
+ - Say what was tested and what was not. Do not claim a feature works without running it.
+ - Owner wants: tap or selection only (no typed questions), short and human replies, buttons that land on the exact
+   page or section, simple and compact.
+
+DONE (browser-tested at phone width, 2026-10-02)
+ 1  Concierge / Atelier Guide / Companion floating chats: "What I can help with", question tabs, short answers
+    ("More" expands), "Next step" buttons that open the exact page or section.
+ 2  Concierge is the coordinator: "Talk to <role>" at the bottom; "Ask <specialist>" hand-offs carry the question;
+    specialists have "Plan it with Concierge". Human style hand-off greeting.
+ 3  "Where should I start?" guided choice: I know where / map / ideas by feeling / BY SEASON / not sure / fixed dates.
+ 4  By season: the 26 destinations that have climate data (23 + Granada, Cordoba, Seville) (TRAVEL_BASIC_PROFILES + TRAVEL_CLIMATE_RANGES). Typical
+    ranges only, not a forecast. Tap a place to set it as the destination and open the planner.
+ 5  Direct-go answers (one line, then navigate): prepare, add stop, trip shape, Atelier intro, nearby.
+ 6  Trip brief (style from Atelier + destination + chosen stay): one line in the chat; used for stay answers.
+ 7  Full pages (#concierge, #atelier): role strip with icon and pager; page cards give the same answers and buttons.
+ 8  Tap-only: typed question boxes are hidden everywhere in the conversations (floating chats, page cards,
+    Companion page). Planner fields (From, To, dates) stay because they are real form data.
+ 9  Six Companion personas with their own voices. Jolly Wanderer is the funny one. "Tell me a travel joke" chip.
+ 10 Tab notice: when a chat button has to switch Explore / Traveling it shows "Switched to ...".
+ 11 Preview safe logging (reduced console). gtRoleFeatureCheck() lists any missing feature.
+ 14 Floating chat = a short phrase (about 15-75 characters) + "Know more →", which closes the chat, opens the full page and asks the
+    same question there: longer answer, a detail line and the real buttons (gtKnowMoreCss; SHORT / DETAIL tables in gtActionAnswersJs).
+    Navigation-only answers ("Opening Trip Prep.") and the history notes have no Know more.
+ 13 Readable floating panels (gtReadableCss): text was 8.5-11px, now 12px minimum, questions and buttons 14px+, answers 15px;
+    panel 420px wide on laptop, up to 380px on phone, height fits the space above the button; chat scrolls to the new answer;
+    helper lines shortened to one phrase; answers over about 120 characters show the first sentence with "More".
+ 12 Andalusia: Granada, Cordoba (shown as Córdoba) and Seville added like Marrakech (map, climate, language, Spanish phrasebook,
+    safety, tips) with 5 one-line history notes each (gtTriviaJs). Chip "A bit of history" in the floating Companion (Local tab)
+    and on the Companion page; tap again for the next note. Marrakech / Morocco is unchanged.
+
+PENDING
+ STILL TO DO (as of 2026-10-16, in rough priority order; owner decisions are marked DECIDE)
+  1. PHOTOS (owner must supply, own or licensed; none were invented). Still empty: Palazzo Parisio, Casa 1800 Granada, Hotel Balcon de Cordoba (they show
+     "See photos on the official site"), the Andalucia and Morocco stories, and the 2 Atelier rooms (Blue Hour Loft, Soft Minimal) which use original
+     illustrations. The photos merged in on 2026-10-16 came from the owner's older v12 file: licensing of those is the owner's call.
+  2. REAL DEVICE TEST: iPhone and Android, the other colour themes and dark theme, Data Saver ON, installed home-screen mode. Newest and least tested:
+     panorama (drag by touch, landscape, memory use of a 1774px image), Reset, Travelling as, the tips v2 landing, #gt-cg-contrast on every theme.
+  3. SAME TYPE PROBLEM ELSEWHERE (partly done): the 12px text floor flattens cards whose source sizes were 8/9/11px. Fixed: Private journey card,
+     Companion journey box, route block. Checked by eye and fine: Experiences panel, Quick plan, Concept card, Cote d'Azur entry. NOT checked: My trips cards.
+  4. TRAVELLING AS: (a) only one pacing line per day, the itinerary library is not party-specific; (b) typing a party to the Concierge updates its memory
+     but not the form field; (c) the older "On the ground" options (journeyCharacterPatch COMPANY) overlap in part and are NOT linked, DECIDE; (d) trips
+     saved before this feature show no party on their cards; (e) reopening from a My trips card was not tested separately.
+  5. TIPS v2: DECIDE which tips are "must" (p in tipCategories, plus the one-line takeaway k). Only Amalfi has place tips; every new destination story needs
+     its own tipCategories entry and inlineTipMap line (third item = optional guard such as /Amalfi/). No tips for the Companion or Atelier roles.
+  6. DEPLOY PACKAGE: the installable site zip was last built from a much older core (cache gt-v23). Rebuild from this file (it is now about 8.2 MB because of
+     the photos and panorama; check the service worker precache size and the host limit): move this DEV NOTE to DEV-NOTES.txt, keep manifest and meta tags,
+     bump the sw.js version, test offline once over http.
+  7. LEGAL FOOTER (#gtLegal) says nothing is sent to a server, while the app opens external links for stays and flights. DECIDE if that is the promise you want.
+  8. PANORAMA: only one panorama exists. Its launch note says "best viewed in landscape on a larger screen"; keyboard and screen-reader use of the viewer
+     was not checked.
+  9. SMALL: gtTextAudit() reports 1 element under 12px, a hidden zero-size "Offline mode" label (harmless).
+ OLDER ITEMS (some are superseded by the list above):
+ - POLISH NEXT (owner asked for an elegant, beautiful app; pass 1 = first screen only): header still holds 14 controls on laptop (Offline pill, Data saver pill, 7 palette dots, 5 icons) - consider one 'Style' button; ~19 text sizes in use - unify to a 7-step scale; many controls still < 44px; Plan / Past / Traveling pages have not had a visual pass; Explore page is ~19,000 px long.
+ - (DONE 2026-10-03) Dark-theme contrast: dock, header chips, cards, forms, buttons fixed (see gtDarkSurfaces + gtDarkGuardJs). STILL UNMEASURED: text laid directly over photos (card kickers on images) is not covered by the numeric audit - check by eye; and the guard's numbers assume the page background is --bg plus gradients (verify new components with gtContrastAudit(true) and a screenshot).
+ - Dark-theme guard cost: a repair pass takes ~100 ms on a long Explore page; runs ~250 ms after changes + one settle pass 1 s later; only on dark themes.
+ - (SUPERSEDED 2026-10-16: see STILL TO DO 1) Real photos: 11 Design Atelier cards use vector art (no real photos in any version received); Andalucia/Morocco image slots empty. Owner to upload the version that has them.
+ - (DONE 2026-10-03) Cote d'Azur image checked: loads on Explore and in the viewer (phone and laptop). Card text overlap fixed.
+ - Booked/locked trip rules (booked > saved on the same dates; two booked on today's dates shows the most recent): owner sign-off still open.
+ - Larger text (TEXT-REFINE-PACK) was layout-checked in headless Chrome only (Home laptop 1351x597, phone 390x844); check the new icon row, Home badge and owner badges on a real phone.
+ - (DONE 2026-10-03) The 15 history notes were checked against web sources, one by one: all supported (Granada 5/5, Cordoba 5/5, Seville 5/5).
+   Sources: History Today, UNESCO ich.unesco.org (Patios 2012), Granada tourism office (free tapa), Archivo General de Indias / Britannica (Casa de Contratacion 1503-1717),
+   andalucia.com, Wikipedia. Domains spain.info and renfe.com confirmed official; exact link PATHS (/en/ , /es/en) could not be fetched here, so click them once.
+   OPEN, owner decision: (a) Cordoba note 5 is about Madrid and Seville note 5 about Barcelona (true, but not about the city). Suggested replacements, both source-checked:
+     Cordoba: "Seneca the Younger and the poet Lucan were both born in Cordoba, then the Roman city of Corduba."
+     Seville: "The Giralda is named after the weather vane (giraldillo) added in the 16th century; before that it was simply 'the tower'."
+   (b) Optional wording: Seville oranges - "mostly made into marmalade (much of it in Britain) rather than eaten" (many fall and are swept away). Cordoba 5: court briefly returned to Valladolid 1601-06.
+   (c) Renfe's site is reported (2 travel guides) to refuse some foreign cards; consider a one-line tip.
+ - Granada, Cordoba and Seville share ONE approximate climate profile (andalusia); real values differ a little by city.
+ - Destination photos for the three new places are not checked (same loading method as the other destinations).
+ - Test on a real iPhone and Android.
+ - (DONE 2026-10-02) Full button by button navigation test passed on this exact file: Concierge 12 questions, Atelier
+   Guide 10, Companion 24; 0 problems. Re-run after any change to section ids or the action buttons.
+ - More climate profiles to widen By season (a data job, no new code).
+ - If tap-only is permanent: remove the hidden typed boxes from the markup (now only hidden by CSS gtTapOnlyCss).
+ - Companion full page has chips only (no question card like Concierge and Atelier).
+
+KNOWN LIMITS
+ - Text sizes were checked in headless Chrome at 1280x720 and 390x844, not on a real iPhone. Verify on the real device.
+ - The floating Companion Local tab shows 4 chips, so "What should I notice here?" is no longer shown there (still on the Companion page).
+ - By season: tropical places show the same range in every season; only Patagonia has seasons flipped;
+   "most comfortable" means closest to 22 C (owner may change it).
+ - Buttons that need the other tab switch the tab (the saved mode changes) and show the notice.
+ - Persona voices share the same facts; they differ in tone, openers and closers.
+ - Buttons navigate by section ids (concierge, atelier, globalmap, realEdit, tripTo, tripStart, readyPanel, and so on).
+   If an id is renamed, the matching button stops working.
+
+FEATURE MARKERS (search these when merging; in DevTools run gtRoleFeatureCheck(): [] means all present)
+ NEW 2026-10-13..16: gt-party (#tripParty #gtPartyLine #ticketParty; gtParty gtSetParty gtPartyDayNote gtRestoreParty gtAdvisorSetWho)  gt-concierge-needs  gt-brief-readable  gt-cards-readable  gt-reset (#gtResetApp, gtResetApp)  gt-panorama-viewer (#gtOpenPanorama #gtPanoramaModal)  gt-cg-contrast  tips v2 (tipsMarkup; openTipsPanel(cat, tipIndex))
+ NEW 2026-10-03: gtFirstVisitJs  gtHomeTeamJs  gtFeatureOwnersJs  S-TC-MORE-MENU  S-TEAM-ICONS  S-HOME-TEAM  S-FIRST-VISIT  gtAppReadableCss gtReadableCss gtTextRefineJs (LAST in the file)
+ gtRoleSwitchJs  gtPersonaVoiceJs  gtRoleIdentityJs  gtRoleCapJs  gtActionAnswersJs  gtTapOnlyCss  gtTabNoticeCss
+ gtRoleFeatureGuardJs
+ Small in-place edits: appendHandoff, HUMAN table in gtHandoffBarJs, fallback answer in gtAssistantAnswer,
+ Jolly Wanderer rename, joke chip, full page card lede.
+
+CHANGE LOG
+ 2026-10-16  MERGE v19: base = v16_integrated_panorama (panorama, photos, contrast, tips v2) + Reset this app + readable cards + tip fixes (Amalfi, landing).
+             Travelling as and the readable Private journey card (2026-10-13..15) are in both lines. See MERGE v19 and STILL TO DO.
+ 2026-10-02  Built on newcore-FINAL-2026-10-01_1033; merged role work; added tap-only, By season, tab notice,
+             DEV NOTE. No duplicate uploads found among the three files compared.
+ 2026-10-02  Full navigation test (headless browser, phone width): Concierge 29 navigation buttons + 6 hand-offs + 3
+             external confirms + By season swap; Atelier Guide 24 navigation + 3 hand-offs; Companion 21 navigation + 8
+             external confirms, 9 emotional questions text-only on purpose. 0 problems, 0 page errors.
+ 2026-10-02  Short phrases in the floating chat + "Know more →" to the full page (longer answer + detail line).
+ 2026-10-02  Readable text in the floating panels (laptop and phone), shorter helper lines, panel height fits the screen.
+ 2026-10-02  Added Granada, Cordoba, Seville + 15 history notes + "A bit of history" chip; accent-safe destination lookup (Córdoba, Sevilla).
+ 2026-10-03  Bug fixed: floating Companion "Give me a bit of history" said "Pick one" but its only button was an inert "Another" outside Andalusia; now offers Granada / Córdoba / Seville (S-HISTORY-PICK). Picking one sets the trip destination field, same as the page card.
+ 2026-10-03  Companion floating icon (cgFab2) is now ALWAYS visible (was Traveling mode only), same round shape as the other two, deep brown #6f5a34; tapping it opens the Companion where you are (openPanel no longer falls back to the Concierge outside Traveling mode; [S-COMPANION-ALWAYS]). Left corner = Companion then Atelier (Atelier hides in Traveling mode as before); right = Concierge. Tested: opens in Explore mode without switching mode.
+ 2026-10-03  POLISH 2 (S-POLISH-2, gtPolishV2) on Plan / Traveling / Past: connector strip labels readable; Day-1 strip ink; brief row hierarchy (labels small, values large); Plan pill tracking on phones; past-trip row stacked with outlined pill buttons on phones.
+ 2026-10-03  POLISH 1b (same gtPolishV1 block): Atelier corner icon now takes the left corner when Companion (travel-mode only) is hidden (it sat 60px in, over the text); team block is heading | icons on >=1000px; soft shade + brighter caption on the hero photo card (#heroBox::after).
+ 2026-10-03  POLISH 1 (S-POLISH-1, gtPolishV1): calmer first screen - banner restyled as soft glass below the sticky strip, mode note waits for it (body:has) and is a quiet inline line, duplicate 'new here' welcome hidden (wording moved into the team subtitle), header .icon buttons 40px.
+ 2026-10-03  Contrast on dark themes (owner screenshot of the Plan page: light-glass cards + light text, ratio ~1.1-1.7): fixed in 3 layers: gtDarkSurfaces (static CSS for ~60 known cards), gtDarkGuardJs (S-DARK-GUARD: measures every text element against its real blended background on dark themes and repairs any <4.5:1; window.gtContrastAudit() reports what is left; gtDarkGuard.run() forces a pass).
+ 2026-10-03  Root causes found for the dark-theme contrast report: (1) cards/glass containers get their whiteness from translucent-white GRADIENT background-images (not background-color) - the guard now reads gradients; (2) .ambient had a pure #fff radial glow -> pale patch under light text on dark themes; now ink-based on dark themes; (3) phone Riviera card kicker lacked a scrim (added). Measured: 0 text elements below 4.5:1 on Explore/Plan/Traveling/Past/Home for all 6 dark themes (gtContrastAudit()).
+ 2026-10-03  Dark themes: team cards, Home badge/popover and owner badges now follow theme colours (S-THEME-AWARE, gtDarkThemeFix); before, labels were pale-on-white or invisible on dark themes.
+ 2026-10-03  Greeting: the merged fix was still incomplete on trip DAY 1 (card said "Bonjour", then the sentence said "Salut!"); fixed with S-NO-DOUBLE-GREETING-3 (drops the sentence's own opening word when the Local hello card was shown). Tested Day 1 / Day 3 / before trip: one greeting each.
+ 2026-10-03  MERGED from GLOBAL-TRAVEL-CORE-latest.html (another session's verified copy): (1) double Companion greeting fixed, (2) two new dark themes Harbor Lights + Sapphire Night (also added to the nav drawer grid), (3) trip-handoff page text/contrast + shorter copy.
+   That session also recorded: normal + sandboxed load 0 errors; team cards open the right role; the 'Atelier opens Companion' report was leftover travel-mode state, NOT a bug (re-check on a fresh load before re-opening it); a 'real photos' branch (core_merged_full) was NOT merged because it has no gtImgShim and could break Data Saver.
+ 2026-10-03  Full navigation test run (headless Chrome, laptop 1280x800): 16 Menu items + 2 extra menu buttons, 10 Discover tiles, 18 owner chips all land on their target; every answer button of all 3 assistants tapped (Concierge 36, Atelier 27, Companion 29) - none points to another role's page (hand-over instead), no page errors.
+ 2026-10-03  Cote d'Azur: image was NOT broken (data decodes 815x375; it only looked empty because its section is hidden on Home and the viewer image gets its src on open). Real glitch fixed: on phones the card text grew up over the "VIRTUAL VISIT" pill (S-AZUR-CARD, gtResidenceCardFix).
+ 2026-10-03  MERGED the 2026-10-02 zip core's text layer: TEXT-REFINE-PACK pasted just before </html> (gtAppReadableCss, gtReadableCss, gtTextRefineJs). Text floor 12px. Rule: re-apply it LAST after any merge.
+ 2026-10-03  Bug fixed (also in the roles file): the closed Tips panel's inner elements still caught taps (pointer-events); now none while closed.
+ 2026-10-03  Feature ownership (S-FEATURE-OWNERS): every Discover tile + Menu page has ONE owner (Concierge / Atelier Guide / Companion). Owner badge on tiles/menu rows, \"Pages I look after\" chips in each panel, other roles hand over instead of navigating. Table: OWNER in gtFeatureOwnersJs.
+ 2026-10-03  Home page: tiny Your-team avatar-stack badge beside the main button, opening a 3-row popover (S-HOME-TEAM).
+ 2026-10-03  Bug fixed (also in the roles file): tapping a Meet-your-team card never opened its assistant (document click-outside closed it at once); cards now open it after the click (setTimeout 0).
+ 2026-10-03  Meet-your-team now shows as a compact row of 3 icons (S-TEAM-ICONS); descriptions behind a "What does each do?" toggle.
+ 2026-10-03  Added first-visit trimmed home from GLOBAL-TRAVEL-FINAL__7_ (S-FIRST-VISIT), with changes: hero stays visible, coachmark waits 4s and hides on scroll, and it clears on bottom-bar / page-assistant taps too. Flag gt-first-visit-done in localStorage.
+ 2026-10-03  Rewrote the hero intro copy (shorter lead, scannable "Imagined rooms, not real listings" note with accent bar).
+ 2026-10-03  Restored the trip-card "⋯" menu from GLOBAL-TRAVEL-FINAL__6_ (Stay note / Lock / Remove under one ⋯ button; S-TC-MORE-MENU).
+ 2026-10-02  Bug fixed: the "Your brief" line showed the raw text \u00b7 instead of a dot (double backslash in gtBriefLine code).
+             Suggested, not applied: hide the brief line in the Companion panel; trim the two grey notes in small panels;
+             show the first-run "NEW: Tap the Style button" tip only once and not on top of an open chat.
+==================================================
